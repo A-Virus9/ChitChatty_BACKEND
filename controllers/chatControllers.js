@@ -51,7 +51,6 @@ exports.getChats = catchAsync(async (req, res) => {
     { chats: 1 }
   );
   let chatList = "";
-  console.log(DBres);
   if (DBres) {
     chatList = [...DBres.chats].map((user) => user[0]);
   } else {

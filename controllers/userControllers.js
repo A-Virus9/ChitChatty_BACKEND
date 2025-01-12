@@ -12,9 +12,6 @@ const signToken = (id) => {
 };
 
 exports.protect = catchAsync(async (req, res, next) => {
-  // console.log(req.cookies["jwt"]);
-  console.log(req.headers)
-  console.log(req.body)
 
   if (!req.cookies["jwt"]) {
     return next(

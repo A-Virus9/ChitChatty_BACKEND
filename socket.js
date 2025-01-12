@@ -71,13 +71,13 @@ function setupSocket(io) {
     socket.on("message", async (message) => {
       const data = {
         message: message.messageValue,
-        sender,
+        sender
       };
 
       const sender_chats = await Chats.findOne({ username: sender });
       sender_chats.chats.set(message.receiver, [
         ...sender_chats.chats.get(message.receiver),
-        { message: message.messageValue, type: "send" },
+        { message: message.messageValue, type: "send", time: Date.now() },
       ]);
       await sender_chats.save();
 
@@ -86,7 +86,7 @@ function setupSocket(io) {
       });
       receiver_chats.chats.set(sender, [
         ...receiver_chats.chats.get(sender),
-        { message: message.messageValue, type: "receive" },
+        { message: message.messageValue, type: "receive", time: Date.now() },
       ]);
       await receiver_chats.save();
 
