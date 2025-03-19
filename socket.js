@@ -2,6 +2,7 @@ const { promisify } = require("util");
 const jwt = require("jsonwebtoken");
 const User = require("./models/userModel");
 const Chats = require("./models/chatModel");
+const { get } = require("http");
 
 function changedPasswordAfter(user, JWTTimestamp) {
   const changedTimestamp = parseInt(user.passwordChangedAt.getTime() / 1000);
@@ -36,6 +37,24 @@ function generateRoomId(user_1, user_2) {
   return [user_1, user_2].sort().join("_");
 }
 
+async function toggleUserStatus(status, sender) {
+  await User.updateOne({ username: sender }, { status });
+}
+
+async function getRoomIds(sender) {
+  const chat_data = await Chats.findOne(
+    { username: sender },
+    { chats: 1, _id: 0 }
+  );
+  let with_users = [];
+  if (chat_data) {
+    with_users = [...chat_data.chats].map((user) => user[0]);
+  }
+  const room_ids = with_users.map((to_user) => generateRoomId(sender, to_user));
+
+  return room_ids;
+}
+
 function setupSocket(io) {
   io.use((socket, next) => protect(socket, next));
   io.on("connection", (socket) => {
@@ -43,21 +62,19 @@ function setupSocket(io) {
 
     const sender = socket.user.username;
 
+    toggleUserStatus("online", sender);
+
     socket.on("start", async () => {
-      const chat_data = await Chats.findOne(
-        { username: sender },
-        { chats: 1, _id: 0 }
-      );
-      let with_users = [];
-      if (chat_data) {
-        with_users = [...chat_data.chats].map((user) => user[0]);
+      const room_ids = await getRoomIds(sender);
+
+      let data = {
+        user: sender,
+        status: "online",
       }
-      const room_ids = with_users.map((to_user) =>
-        generateRoomId(sender, to_user)
-      );
       room_ids.map((id) => {
         socket.join(id);
         console.log(socket.user.username + " joined room " + id);
+        socket.to(id).emit("status_change", data);
       });
     });
 
@@ -71,7 +88,8 @@ function setupSocket(io) {
     socket.on("message", async (message) => {
       const data = {
         message: message.messageValue,
-        sender
+        sender,
+        time: message.time,
       };
 
       const sender_chats = await Chats.findOne({ username: sender });
@@ -95,8 +113,18 @@ function setupSocket(io) {
         .emit("transport_message", data);
     });
 
-    socket.on("disconnect", () => {
+    socket.on("disconnect", async() => {
       console.log(sender + " disconnected");
+      toggleUserStatus("offline", sender);
+      const room_ids = await getRoomIds(sender);
+      let data = {
+        user: sender,
+        status: "offline",
+      }
+      room_ids.map((id) => {
+        socket.to(id).emit("status_change", data);
+        console.log(id);
+      });
     });
   });
 }

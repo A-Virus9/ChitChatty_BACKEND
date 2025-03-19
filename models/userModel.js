@@ -39,6 +39,10 @@ const userSchema = new mongoose.Schema({
   passwordChangedAt: Date,
   passwordResetToken: String,
   passwordResetExpires: Number,
+  status: {
+    type: String,
+    enum: ["online", "offline"],
+  }
 });
 
 userSchema.pre('save', async function (next) {

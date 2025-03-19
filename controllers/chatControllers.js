@@ -50,12 +50,17 @@ exports.getChats = catchAsync(async (req, res) => {
     { username: req.user.username },
     { chats: 1 }
   );
-  let chatList = "";
-  if (DBres) {
-    chatList = [...DBres.chats].map((user) => user[0]);
-  } else {
-    chatList = "not present";
-  }
+
+  let chatList = await Promise.all(
+    [...DBres.chats].map(async (chat) => {
+      let { status } = await User.findOne({ username: chat[0] }, { status: 1 });
+      return {
+        user: chat[0],
+        status,
+      };
+    })
+  );
+  
   res.status(200).json({
     status: "success",
     chatList,

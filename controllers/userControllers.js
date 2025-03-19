@@ -51,7 +51,7 @@ exports.protect = catchAsync(async (req, res, next) => {
 
 exports.createUser = catchAsync(async (req, res) => {
   req.body.passwordChangedAt = parseInt(Date.now());
-  const newUser = await User.create(req.body);
+  const newUser = await User.create({...req.body, status: "online"});
   const chat_data = {
     username: req.body.username,
     chats: new Map()
@@ -135,3 +135,9 @@ exports.checker = catchAsync(async (req, res, next) => {
     });
   }
 });
+
+exports.isOnline = catchAsync(async (req, res) => {
+  res.json({
+    status: await User.findOne({ username: req.body.newUser }, { status: 1 }),
+  });
+})
