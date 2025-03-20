@@ -60,7 +60,7 @@ exports.getChats = catchAsync(async (req, res) => {
       };
     })
   );
-  
+
   res.status(200).json({
     status: "success",
     chatList,
