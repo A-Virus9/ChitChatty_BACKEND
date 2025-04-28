@@ -13,7 +13,7 @@ const chatSchema = new mongoose.Schema({
   chats: {
     type: Map,
     of: Object
-  }
+  },
 })
 
 module.exports = mongoose.model('Chats', chatSchema, "chats");

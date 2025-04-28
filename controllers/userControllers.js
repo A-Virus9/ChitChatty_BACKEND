@@ -65,7 +65,6 @@ exports.createUser = catchAsync(async (req, res) => {
       Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
     ),
     secure: true,
-    httpOnly: true,
     sameSite: "None"
   });
 
@@ -97,7 +96,6 @@ exports.loginUser = catchAsync(async (req, res, next) => {
       Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
     ),
     secure: true,
-    httpOnly: true,
     sameSite: "None"
   });
   res.status(200).json({

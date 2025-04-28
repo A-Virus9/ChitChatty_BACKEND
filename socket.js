@@ -55,6 +55,14 @@ async function getRoomIds(sender) {
   return room_ids;
 }
 
+async function handleUnread(receiver, unread) {
+  const receiverDoc = await User.findOne({ username: receiver }, { status: 1 });
+  if (receiverDoc.status === "offline") {
+    return unread + 1;
+  }
+  return unread;
+}
+
 function setupSocket(io) {
   io.use((socket, next) => protect(socket, next));
   io.on("connection", (socket) => {
@@ -70,7 +78,7 @@ function setupSocket(io) {
       let data = {
         user: sender,
         status: "online",
-      }
+      };
       room_ids.map((id) => {
         socket.join(id);
         console.log(socket.user.username + " joined room " + id);
@@ -93,19 +101,29 @@ function setupSocket(io) {
       };
 
       const sender_chats = await Chats.findOne({ username: sender });
-      sender_chats.chats.set(message.receiver, [
-        ...sender_chats.chats.get(message.receiver),
-        { message: message.messageValue, type: "send", time: Date.now() },
-      ]);
+      sender_chats.chats.set(message.receiver, {
+        messages: [
+          ...sender_chats.chats.get(message.receiver).messages,
+          { message: message.messageValue, type: "send", time: Date.now() },
+        ],
+        unread: 0,
+      });
       await sender_chats.save();
 
       const receiver_chats = await Chats.findOne({
         username: message.receiver,
       });
-      receiver_chats.chats.set(sender, [
-        ...receiver_chats.chats.get(sender),
-        { message: message.messageValue, type: "receive", time: Date.now() },
-      ]);
+      receiver_chats.chats.set(sender, {
+        messages: [
+          ...receiver_chats.chats.get(sender).messages,
+          { message: message.messageValue, type: "receive", time: Date.now() },
+        ],
+        unread: await handleUnread(
+          message.receiver,
+          receiver_chats.chats.get(sender).unread,
+          socket
+        ),
+      });
       await receiver_chats.save();
 
       socket
@@ -113,14 +131,26 @@ function setupSocket(io) {
         .emit("transport_message", data);
     });
 
-    socket.on("disconnect", async() => {
+    socket.on("increment_unread", async (to_update) => {
+      const update_unread_of = await Chats.findOne({
+        username: sender,
+      });
+      const unread = update_unread_of.chats.get(to_update).unread;
+      update_unread_of.chats.set(to_update, {
+        messages: update_unread_of.chats.get(to_update).messages,
+        unread: unread + 1,
+      });
+      await update_unread_of.save();
+    })
+    
+    socket.on("disconnect", async () => {
       console.log(sender + " disconnected");
       toggleUserStatus("offline", sender);
       const room_ids = await getRoomIds(sender);
       let data = {
         user: sender,
         status: "offline",
-      }
+      };
       room_ids.map((id) => {
         socket.to(id).emit("status_change", data);
         console.log(id);
