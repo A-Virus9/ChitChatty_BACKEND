@@ -57,6 +57,7 @@ async function getRoomIds(sender) {
 
 async function handleUnread(receiver, unread) {
   const receiverDoc = await User.findOne({ username: receiver }, { status: 1 });
+  console.log(unread)
   if (receiverDoc.status === "offline") {
     return unread + 1;
   }
@@ -95,7 +96,7 @@ function setupSocket(io) {
 
     socket.on("message", async (message) => {
       const data = {
-        message: message.messageValue,
+        message: message.message,
         sender,
         time: message.time,
       };
@@ -104,7 +105,7 @@ function setupSocket(io) {
       sender_chats.chats.set(message.receiver, {
         messages: [
           ...sender_chats.chats.get(message.receiver).messages,
-          { message: message.messageValue, type: "send", time: Date.now() },
+          { message: message.message, type: "send", time: Date.now() },
         ],
         unread: 0,
       });
@@ -116,7 +117,7 @@ function setupSocket(io) {
       receiver_chats.chats.set(sender, {
         messages: [
           ...receiver_chats.chats.get(sender).messages,
-          { message: message.messageValue, type: "receive", time: Date.now() },
+          { message: message.message, type: "receive", time: Date.now() },
         ],
         unread: await handleUnread(
           message.receiver,
