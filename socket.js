@@ -132,14 +132,14 @@ function setupSocket(io) {
         .emit("transport_message", data);
     });
 
-    socket.on("increment_unread", async (to_update) => {
+    socket.on("update_unread", async (data) => {
       const update_unread_of = await Chats.findOne({
         username: sender,
       });
-      const unread = update_unread_of.chats.get(to_update).unread;
-      update_unread_of.chats.set(to_update, {
-        messages: update_unread_of.chats.get(to_update).messages,
-        unread: unread + 1,
+      const unread = update_unread_of.chats.get(data.to_update).unread;
+      update_unread_of.chats.set(data.to_update, {
+        messages: update_unread_of.chats.get(data.to_update).messages,
+        unread: data.type==="increment"? unread + 1 : data.type==="reset"? 0 : 0,
       });
       await update_unread_of.save();
     })
