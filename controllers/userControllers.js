@@ -14,13 +14,13 @@ const signToken = (id) => {
 exports.protect = catchAsync(async (req, res, next) => {
   if (!req.cookies["jwt"]) {
     return next(
-      createError("You are not logged in, please log in to get access", 401)
+      createError("You are not logged in, please log in to get access", 401),
     );
   } else token = req.cookies["jwt"];
 
   if (!token) {
     return next(
-      createError("You are not logged in, please log in to get access", 401)
+      createError("You are not logged in, please log in to get access", 401),
     );
   }
 
@@ -31,14 +31,14 @@ exports.protect = catchAsync(async (req, res, next) => {
   const currentUser = await User.findById(decoded.id);
   if (!currentUser) {
     return next(
-      createError("The user belonging to this token no longer exists!", 401)
+      createError("The user belonging to this token no longer exists!", 401),
     );
   }
 
   //4)check if password changed after token issued
   if (currentUser.changedPasswordAfter(decoded.iat)) {
     return next(
-      createError("The password has been changed! Please log in again", 401)
+      createError("The password has been changed! Please log in again", 401),
     );
   }
 
@@ -56,7 +56,7 @@ exports.createUser = catchAsync(async (req, res) => {
 
   res.cookie("jwt", token, {
     expires: new Date(
-      Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
+      Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000,
     ),
     httpOnly: true,
     secure: true,
@@ -88,7 +88,7 @@ exports.loginUser = catchAsync(async (req, res, next) => {
   const token = signToken(user._id);
   res.cookie("jwt", token, {
     expires: new Date(
-      Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
+      Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000,
     ),
     httpOnly: true,
     secure: true,
@@ -101,10 +101,15 @@ exports.loginUser = catchAsync(async (req, res, next) => {
 });
 
 exports.logoutUser = catchAsync(async (req, res) => {
-  console.log("hi")
-  res.clearCookie("jwt")
-  res.end()
-})
+  console.log("hi");
+  res.clearCookie("jwt", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "None",
+    path: "/",
+  });
+  res.end();
+});
 
 exports.checker = catchAsync(async (req, res, next) => {
   const token = req.cookies["jwt"];
