@@ -2,7 +2,9 @@ const { promisify } = require("util");
 const jwt = require("jsonwebtoken");
 const User = require("./models/userModel");
 const Chats = require("./models/chatModel");
+const Conversations = require("./models/conversationModel");
 const { get } = require("http");
+const { atan } = require("mathjs");
 
 function changedPasswordAfter(user, JWTTimestamp) {
   const changedTimestamp = parseInt(user.passwordChangedAt.getTime() / 1000);
@@ -42,16 +44,12 @@ async function toggleUserStatus(status, sender) {
 }
 
 async function getRoomIds(sender) {
-  const chat_data = await Chats.findOne(
-    { username: sender },
-    { chats: 1, _id: 0 }
+  const convos = await Conversations.find(
+    { participants: sender },
+    { _id: 0, lastChat: 0, lastChatTime: 0 },
   );
-  let with_users = [];
-  if (chat_data) {
-    with_users = [...chat_data.chats].map((user) => user[0]);
-  }
-  const room_ids = with_users.map((to_user) => generateRoomId(sender, to_user));
-
+  console.log(convos)
+  const room_ids = convos.map((convo) => generateRoomId(convo.participants[0], convo.participants[1]));
   return room_ids;
 }
 
@@ -75,6 +73,7 @@ function setupSocket(io) {
 
     socket.on("start", async () => {
       const room_ids = await getRoomIds(sender);
+      console.log(sender, room_ids)
 
       let data = {
         user: sender,
@@ -95,53 +94,43 @@ function setupSocket(io) {
     });
 
     socket.on("message", async (message) => {
+      await Chats.create({
+        sender,
+        receiver: message.receiver,
+        message: message.message,
+        time: message.time
+      });
+
+      const convo = await Conversations.findOne({
+        participants: {
+          $all: [sender, message.receiver]
+        }
+      })
+      
+      convo.unreadBy = message.receiver;
+      convo.lastChat = message.message;
+      convo.lastChatTime = message.time
+      await convo.save()
+
       const data = {
         message: message.message,
         sender,
         time: message.time,
       };
 
-      const sender_chats = await Chats.findOne({ username: sender });
-      sender_chats.chats.set(message.receiver, {
-        messages: [
-          ...sender_chats.chats.get(message.receiver).messages,
-          { message: message.message, type: "send", time: Date.now() },
-        ],
-        unread: 0,
-      });
-      await sender_chats.save();
-
-      const receiver_chats = await Chats.findOne({
-        username: message.receiver,
-      });
-      receiver_chats.chats.set(sender, {
-        messages: [
-          ...receiver_chats.chats.get(sender).messages,
-          { message: message.message, type: "receive", time: Date.now() },
-        ],
-        unread: await handleUnread(
-          message.receiver,
-          receiver_chats.chats.get(sender).unread,
-          socket
-        ),
-      });
-      await receiver_chats.save();
-
       socket
         .to(generateRoomId(sender, message.receiver))
         .emit("transport_message", data);
     });
 
-    socket.on("update_unread", async (data) => {
-      const update_unread_of = await Chats.findOne({
-        username: sender,
-      });
-      const unread = update_unread_of.chats.get(data.to_update).unread;
-      update_unread_of.chats.set(data.to_update, {
-        messages: update_unread_of.chats.get(data.to_update).messages,
-        unread: data.type==="increment"? unread + 1 : data.type==="reset"? 0 : 0,
-      });
-      await update_unread_of.save();
+    socket.on("clear_unreads", async (data) => {
+      const convo = await Conversations.findOne({
+        participants: {
+          $all: [sender, data.receiver]
+        }
+      })
+      convo.unreads = 0;
+      await convo.save()
     })
     
     socket.on("disconnect", async () => {
@@ -154,7 +143,6 @@ function setupSocket(io) {
       };
       room_ids.map((id) => {
         socket.to(id).emit("status_change", data);
-        console.log(id);
       });
     });
   });

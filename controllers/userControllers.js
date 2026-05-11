@@ -12,7 +12,6 @@ const signToken = (id) => {
 };
 
 exports.protect = catchAsync(async (req, res, next) => {
-
   if (!req.cookies["jwt"]) {
     return next(
       createError("You are not logged in, please log in to get access", 401)
@@ -51,12 +50,7 @@ exports.protect = catchAsync(async (req, res, next) => {
 
 exports.createUser = catchAsync(async (req, res) => {
   req.body.passwordChangedAt = parseInt(Date.now());
-  const newUser = await User.create({...req.body, status: "online"});
-  const chat_data = {
-    username: req.body.username,
-    chats: new Map()
-  }
-  await Chats.create(chat_data)
+  const newUser = await User.create({ ...req.body, status: "online" });
 
   const token = signToken(newUser._id);
 
@@ -66,7 +60,7 @@ exports.createUser = catchAsync(async (req, res) => {
     ),
     httpOnly: true,
     secure: true,
-    sameSite: "None"
+    sameSite: "None",
   });
 
   res.status(201).json({
@@ -98,13 +92,19 @@ exports.loginUser = catchAsync(async (req, res, next) => {
     ),
     httpOnly: true,
     secure: true,
-    sameSite: "None"
+    sameSite: "None",
   });
   res.status(200).json({
     status: "success",
     token,
   });
 });
+
+exports.logoutUser = catchAsync(async (req, res) => {
+  console.log("hi")
+  res.clearCookie("jwt")
+  res.end()
+})
 
 exports.checker = catchAsync(async (req, res, next) => {
   const token = req.cookies["jwt"];
@@ -135,9 +135,3 @@ exports.checker = catchAsync(async (req, res, next) => {
     });
   }
 });
-
-exports.isOnline = catchAsync(async (req, res) => {
-  res.json({
-    status: await User.findOne({ username: req.body.newUser }, { status: 1 }),
-  });
-})

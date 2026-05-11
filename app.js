@@ -3,6 +3,7 @@ const morgan = require("morgan");
 
 const userRouter = require("./routers/userRouter.js");
 const chatRouter = require("./routers/chatRouter.js");
+const conversationRouter = require("./routers/conversationRouter.js");
 const createError = require("./utils/createError");
 const helmet = require("helmet");
 const mongoSanitize = require("express-mongo-sanitize");
@@ -38,6 +39,7 @@ app.use((req, res, next) => {
 
 app.use("/users", userRouter);
 app.use("/chats", chatRouter);
+app.use("/conversations", conversationRouter)
 
 app.all("*", (req, res, next) => {
   return next(createError(`Cant find ${req.originalUrl} on this server`, 404));

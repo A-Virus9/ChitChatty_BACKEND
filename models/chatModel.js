@@ -1,19 +1,21 @@
 const mongoose = require('mongoose');
 
 const chatSchema = new mongoose.Schema({
-  username: {
+  sender: {
     type: String,
-    unique: true,
     required: true
   },
-  lastChat: {
-    type: Map,
-    of: Object
+  receiver: {
+    type: String,
+    required: true
   },
-  chats: {
-    type: Map,
-    of: Object
+  message: {
+    type: String,
   },
+  time: {
+    type: Date,
+    required: true
+  }
 })
 
-module.exports = mongoose.model('Chats', chatSchema, "chats");
+module.exports = mongoose.model('Messages', chatSchema, "messages");
