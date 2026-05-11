@@ -4,7 +4,6 @@ const User = require("./models/userModel");
 const Chats = require("./models/chatModel");
 const Conversations = require("./models/conversationModel");
 const { get } = require("http");
-const { atan } = require("mathjs");
 
 function changedPasswordAfter(user, JWTTimestamp) {
   const changedTimestamp = parseInt(user.passwordChangedAt.getTime() / 1000);
